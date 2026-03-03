@@ -1,0 +1,5 @@
+{
+  "name": "EcoCharge CAISO",
+  "description": "Smart EV charging dashboard for CAISO territory. Optimizes charging times based on marginal carbon emissions forecasts.",
+  "requestFramePermissions": []
+}
