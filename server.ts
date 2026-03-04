@@ -1,6 +1,5 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import {
   getEstimatedFuel,
@@ -13,8 +12,6 @@ dotenv.config();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000");
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 let wattTimeToken: string | null = null;
 let tokenExpiry: number = 0;
