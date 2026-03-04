@@ -1,18 +1,20 @@
 # CLAUDE.md — Developer Guide for Claude Code
 
-This file tells Claude how to work on this repository.
+This file tells Claude how to work on this repository. For what the product does, see SPEC.md.
 
 ## Project Structure
 
 ```
 server.ts         # Express backend — API routes (CAISO, WattTime, Gemini), Vite dev middleware
 src/App.tsx       # Main React component (dashboard UI, charts, AI chat)
+src/shared.ts     # Shared pure functions (fuel estimation, window calculation, data processing)
 src/main.tsx      # React entry point
 src/index.css     # Tailwind CSS entry
 index.html        # Vite HTML entry point
-vite.config.ts    # Vite + React + Tailwind config
+vite.config.ts    # Vite + React + Tailwind config (includes vitest config)
 tsconfig.json     # TypeScript config
-tests/            # Test suite
+tests/            # Vitest test suite
+SPEC.md           # Product specification
 .env.example      # Required env vars (GEMINI_API_KEY, WATTTIME credentials, APP_URL)
 ```
 
@@ -29,7 +31,7 @@ npm run dev
 
 ```bash
 npm run lint           # TypeScript type-check (tsc --noEmit)
-npx vitest run         # if/when vitest is added
+npm test               # Vitest unit tests
 ```
 
 All checks must pass before committing. If you add or change any logic, add corresponding tests in `tests/`.
@@ -50,6 +52,11 @@ These apply to every change.
 - TypeScript code must pass `tsc --noEmit` (`npm run lint`) with no errors before committing.
 - Follow standard TypeScript/React conventions. Use consistent formatting with the existing codebase.
 - CSS uses Tailwind utility classes — avoid custom CSS unless truly necessary.
+
+### Spec Stays Current
+
+- If a change modifies user-facing behaviour, inputs, outputs, or calculation logic, update SPEC.md in the same commit.
+- Do not let the spec drift from the implementation.
 
 ### Input Validation
 

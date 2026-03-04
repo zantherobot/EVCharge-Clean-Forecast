@@ -2,6 +2,12 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import {
+  getEstimatedFuel,
+  processWattTimeData,
+  combineAndFilterData,
+  averageByPTHour,
+} from "./src/shared.ts";
 
 dotenv.config();
 
@@ -50,44 +56,22 @@ app.get("/api/monthly-averages", async (req, res) => {
       "January", "February", "March", "April", "May", "June",
       "July", "August", "September", "October", "November", "December"
     ];
-    
-    // We'll fetch 1 representative day for each month from 2024
-    // and calculate hourly averages.
+
     const monthlyAverages = await Promise.all(months.map(async (month, idx) => {
       const monthNum = (idx + 1).toString().padStart(2, '0');
-      // Using mid-month representative days from 2024
       const start = `2024-${monthNum}-15T00:00:00Z`;
       const end = `2024-${monthNum}-16T00:00:00Z`;
-      
+
       const response = await fetch(
         `https://api.watttime.org/v3/historical?region=CAISO_NORTH&signal_type=co2_moer&start=${start}&end=${end}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (!response.ok) return { month, hours: [] };
-      
+
       const json = await response.json();
-      const hourlyData: { [key: number]: number[] } = {};
-      
-      json.data.forEach((point: any) => {
-        // Convert UTC to Pacific Time for the hour
-        const date = new Date(point.point_time);
-        const ptHour = parseInt(new Intl.DateTimeFormat('en-US', {
-          hour: 'numeric',
-          hour12: false,
-          hourCycle: 'h23',
-          timeZone: 'America/Los_Angeles'
-        }).format(date));
-        
-        if (!hourlyData[ptHour]) hourlyData[ptHour] = [];
-        hourlyData[ptHour].push(point.value);
-      });
-      
-      const hours = Object.keys(hourlyData).map(h => ({
-        hour: parseInt(h),
-        intensity: hourlyData[parseInt(h)].reduce((a, b) => a + b, 0) / hourlyData[parseInt(h)].length
-      })).sort((a, b) => a.hour - b.hour);
-      
+      const hours = averageByPTHour(json.data);
+
       return { month, hours };
     }));
 
@@ -101,15 +85,13 @@ app.get("/api/monthly-averages", async (req, res) => {
 app.get("/api/emissions", async (req, res) => {
   try {
     const token = await getWattTimeToken();
-    
-    // 1. Fetch Forecast (usually 24h)
+
     const forecastRes = await fetch(
       "https://api.watttime.org/v3/forecast?region=CAISO_NORTH&signal_type=co2_moer",
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const forecastJson = await forecastRes.json();
-    
-    // 2. Fetch History for the last 6 days
+
     const now = new Date();
     const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
     const historyRes = await fetch(
@@ -118,31 +100,9 @@ app.get("/api/emissions", async (req, res) => {
     );
     const historyJson = await historyRes.json();
 
-    // Map and combine
-    const historyData = (historyJson.data || []).map((point: any) => ({
-      timestamp: point.point_time,
-      intensity: point.value,
-      marginalFuel: getEstimatedFuel(point.value),
-      type: 'history'
-    }));
-
-    const forecastData = (forecastJson.data || []).map((point: any) => ({
-      timestamp: point.point_time,
-      intensity: point.value,
-      marginalFuel: getEstimatedFuel(point.value),
-      type: 'forecast'
-    }));
-
-    // Combine and sort
-    let combinedData = [...historyData, ...forecastData].sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
-
-    // Filter to only include data from the current hour onwards (Pacific Time)
-    const currentHourStart = new Date();
-    currentHourStart.setMinutes(0, 0, 0);
-    
-    combinedData = combinedData.filter(d => new Date(d.timestamp) >= currentHourStart);
+    const historyData = processWattTimeData(historyJson.data || [], 'history');
+    const forecastData = processWattTimeData(forecastJson.data || [], 'forecast');
+    const combinedData = combineAndFilterData(historyData, forecastData, now);
 
     res.json({
       data: combinedData,
@@ -153,13 +113,6 @@ app.get("/api/emissions", async (req, res) => {
     res.status(500).json({ error: error.message || "Failed to fetch emissions" });
   }
 });
-
-function getEstimatedFuel(intensity: number): string {
-  if (intensity < 100) return "Solar/Wind";
-  if (intensity < 400) return "Hydro/Mix";
-  if (intensity < 700) return "Natural Gas";
-  return "Peaker Plant";
-}
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
