@@ -82,14 +82,7 @@ export default function App() {
         }
       }
 
-      // Fetch monthly averages if not already loaded
-      const monthlyResponse = await fetch('/api/monthly-averages');
-      const mData = await monthlyResponse.json();
-      if (monthlyResponse.ok) {
-        setMonthlyData(mData);
-      } else {
-        console.warn('Monthly averages failed:', mData.error);
-      }
+      // Monthly averages fetch removed — view is hidden for now
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
