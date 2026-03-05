@@ -16,8 +16,22 @@ export interface EmissionDataPoint {
 }
 
 /**
+ * Detects the interval between consecutive data points in minutes.
+ * Returns 60 (1 hour) as fallback if fewer than 2 points.
+ */
+export function detectIntervalMinutes(data: EmissionDataPoint[]): number {
+  if (data.length < 2) return 60;
+  const t0 = new Date(data[0].timestamp).getTime();
+  const t1 = new Date(data[1].timestamp).getTime();
+  const diffMinutes = Math.round((t1 - t0) / (1000 * 60));
+  return diffMinutes > 0 ? diffMinutes : 60;
+}
+
+/**
  * Finds the optimal (lowest average intensity) contiguous charging window
- * of `durationHours` data points from future data only.
+ * of `durationHours` hours from future data only.
+ * Automatically detects the data interval (e.g. 5-min) and converts
+ * the hour-based duration to the correct number of data points.
  * Returns null if insufficient data.
  */
 export function findBestWindow(
@@ -26,14 +40,19 @@ export function findBestWindow(
   now: Date = new Date()
 ): { start: EmissionDataPoint; avgIntensity: number } | null {
   const futureData = data.filter(d => new Date(d.timestamp) >= now);
-  if (futureData.length < durationHours) return null;
+  if (futureData.length < 2) return null;
+
+  const intervalMinutes = detectIntervalMinutes(futureData);
+  const pointsNeeded = Math.round((durationHours * 60) / intervalMinutes);
+
+  if (futureData.length < pointsNeeded) return null;
 
   let minAvg = Infinity;
   let bestIdx = 0;
 
-  for (let i = 0; i <= futureData.length - durationHours; i++) {
-    const window = futureData.slice(i, i + durationHours);
-    const avg = window.reduce((acc, curr) => acc + curr.intensity, 0) / durationHours;
+  for (let i = 0; i <= futureData.length - pointsNeeded; i++) {
+    const window = futureData.slice(i, i + pointsNeeded);
+    const avg = window.reduce((acc, curr) => acc + curr.intensity, 0) / pointsNeeded;
     if (avg < minAvg) {
       minAvg = avg;
       bestIdx = i;

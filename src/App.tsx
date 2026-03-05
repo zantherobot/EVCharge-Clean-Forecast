@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { findBestWindow } from './shared';
 import {
   Leaf,
   Zap,
@@ -9,7 +10,6 @@ import {
   ChevronRight,
   RefreshCw,
   AlertCircle,
-  Linkedin
 } from 'lucide-react';
 import { format, addHours, isSameDay, parseISO, startOfHour } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
@@ -132,25 +132,7 @@ export default function App() {
   }, [data, selectedDay]);
 
   const bestWindow = useMemo(() => {
-    const futureData = data.filter(d => new Date(d.timestamp) >= new Date());
-    if (futureData.length < chargeDuration) return null;
-    
-    let minAvg = Infinity;
-    let bestIdx = 0;
-
-    for (let i = 0; i <= futureData.length - chargeDuration; i++) {
-      const window = futureData.slice(i, i + chargeDuration);
-      const avg = window.reduce((acc, curr) => acc + curr.intensity, 0) / chargeDuration;
-      if (avg < minAvg) {
-        minAvg = avg;
-        bestIdx = i;
-      }
-    }
-
-    return {
-      start: futureData[bestIdx],
-      avgIntensity: minAvg
-    };
+    return findBestWindow(data, chargeDuration, new Date());
   }, [data, chargeDuration]);
 
   const currentIntensity = useMemo(() => {
@@ -388,7 +370,7 @@ export default function App() {
                   <div>
                     <h3 className="text-lg font-bold">Emissions Forecast</h3>
                     <p className="text-sm text-zinc-500">
-                      {days.length < 7 ? `${days.length}-day outlook (Live Grid Data)` : '7-day outlook for CAISO territory'}
+                      72-hour forecast for CAISO territory
                     </p>
                   </div>
                   <div className="flex gap-1 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
@@ -471,11 +453,11 @@ export default function App() {
                           x1={cheapRateRange.start}
                           x2={cheapRateRange.end}
                           fill="#3b82f6"
-                          fillOpacity={0.06}
+                          fillOpacity={0.08}
                           stroke="#3b82f6"
-                          strokeOpacity={0.2}
+                          strokeOpacity={0.3}
                           strokeDasharray="3 3"
-                          label={{ value: 'Cheapest Rate (12am–3pm)', position: 'insideTopLeft', fill: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}
+                          label={{ value: 'Cheapest Rate (12am–3pm)', position: 'insideTop', fill: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}
                         />
                       )}
                       {bestWindow && isSameDay(parseISO(bestWindow.start.timestamp), parseISO(selectedDay || '')) && (
@@ -617,7 +599,6 @@ export default function App() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors font-medium"
             >
-              <Linkedin className="w-4 h-4" />
               Henry White
             </a>
             <span>&middot;</span>

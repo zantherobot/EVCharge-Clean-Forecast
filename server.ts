@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import {
   getEstimatedFuel,
   processWattTimeData,
-  combineAndFilterData,
   averageByPTHour,
 } from "./src/shared.ts";
 
@@ -84,25 +83,15 @@ app.get("/api/emissions", async (req, res) => {
     const token = await getWattTimeToken();
 
     const forecastRes = await fetch(
-      "https://api.watttime.org/v3/forecast?region=CAISO_NORTH&signal_type=co2_moer",
+      "https://api.watttime.org/v3/forecast?region=CAISO_NORTH&signal_type=co2_moer&horizon_hours=72",
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const forecastJson = await forecastRes.json();
 
-    const now = new Date();
-    const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-    const historyRes = await fetch(
-      `https://api.watttime.org/v3/historical?region=CAISO_NORTH&signal_type=co2_moer&start=${sixDaysAgo.toISOString()}&end=${now.toISOString()}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const historyJson = await historyRes.json();
-
-    const historyData = processWattTimeData(historyJson.data || [], 'history');
     const forecastData = processWattTimeData(forecastJson.data || [], 'forecast');
-    const combinedData = combineAndFilterData(historyData, forecastData, now);
 
     res.json({
-      data: combinedData,
+      data: forecastData,
       source: "watttime"
     });
   } catch (error: any) {

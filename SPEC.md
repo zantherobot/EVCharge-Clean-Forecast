@@ -1,6 +1,6 @@
 # SPEC.md — EV Charging Clean Forecast Product Specification
 
-EV Charging Clean Forecast is a web dashboard that helps EV owners in California charge their vehicles when the electrical grid is cleanest. It uses real-time and forecasted **marginal carbon emissions** data from the [WattTime API](https://watttime.org/) (CAISO_NORTH region) to recommend optimal charging windows.
+EV Charging Clean Forecast is a web dashboard that helps EV owners in California charge their vehicles when the electrical grid is cleanest. It uses forecasted **marginal carbon emissions** data from the [WattTime API](https://watttime.org/) (CAISO_NORTH region) to recommend optimal charging windows.
 
 ## Architecture
 
@@ -12,7 +12,7 @@ EV Charging Clean Forecast is a web dashboard that helps EV owners in California
 
 1. Server authenticates with WattTime using Basic Auth (username/password from env vars).
 2. WattTime returns a bearer token, cached for 25 minutes.
-3. API routes fetch forecast and historical data using that token.
+3. API route fetches 72-hour forecast data using that token.
 4. Frontend fetches from the Express API and renders charts and recommendations.
 
 ---
@@ -28,7 +28,7 @@ EV Charging Clean Forecast is a web dashboard that helps EV owners in California
 
 ### `GET /api/emissions`
 
-Returns combined historical + forecast marginal emissions data for CAISO_NORTH.
+Returns 72-hour forecast marginal emissions data for CAISO_NORTH.
 
 **Response shape:**
 ```json
@@ -38,7 +38,7 @@ Returns combined historical + forecast marginal emissions data for CAISO_NORTH.
       "timestamp": "2024-03-15T08:00:00Z",
       "intensity": 350,
       "marginalFuel": "Natural Gas",
-      "type": "history"
+      "type": "forecast"
     }
   ],
   "source": "watttime"
@@ -46,12 +46,10 @@ Returns combined historical + forecast marginal emissions data for CAISO_NORTH.
 ```
 
 **Behavior:**
-1. Fetches 24-hour forecast from `GET /v3/forecast?region=CAISO_NORTH&signal_type=co2_moer`.
-2. Fetches 6-day history from `GET /v3/historical?region=CAISO_NORTH&signal_type=co2_moer&start=...&end=...`.
-3. Each data point is enriched with a `marginalFuel` label (see Fuel Estimation below).
-4. History points are tagged `type: "history"`, forecast points `type: "forecast"`.
-5. Combined data is sorted by timestamp ascending.
-6. Data is filtered to only include points from the current hour onward (using server local time, minutes/seconds zeroed).
+1. Fetches 72-hour forecast from `GET /v3/forecast?region=CAISO_NORTH&signal_type=co2_moer&horizon_hours=72`.
+2. Each data point is enriched with a `marginalFuel` label (see Fuel Estimation below).
+3. All points are tagged `type: "forecast"`.
+4. Data is returned as-is from WattTime (at 5-minute intervals), sorted by timestamp ascending.
 
 **Error handling:** Returns `{ "error": "<message>" }` with HTTP 500.
 
@@ -94,6 +92,10 @@ Maps a MOER intensity value (lbs CO₂/MWh) to a human-readable marginal fuel la
 | 400–699             | Natural Gas    |
 | ≥ 700               | Peaker Plant   |
 
+### Data Interval Detection: `detectIntervalMinutes(data)`
+
+Detects the interval between consecutive data points by comparing the first two timestamps. WattTime typically returns 5-minute intervals. Falls back to 60 minutes if fewer than 2 points.
+
 ---
 
 ## Frontend
@@ -113,10 +115,10 @@ Maps a MOER intensity value (lbs CO₂/MWh) to a human-readable marginal fuel la
 
 #### Optimal Charging Window (`bestWindow`)
 - Uses a sliding window algorithm over future data points only (timestamp ≥ now).
-- Window size = selected charge duration.
+- **Automatically detects the data interval** (e.g. 5 minutes) and converts the selected charge duration (in hours) to the correct number of data points.
 - Finds the contiguous window with the lowest average intensity.
 - Displays: start time (day + time in PT), average intensity, and percentage cleaner than current intensity.
-- If insufficient future data points (fewer than charge duration), no recommendation is shown.
+- If insufficient future data points for the requested duration, no recommendation is shown.
 
 #### Emissions Forecast Chart
 - Recharts `AreaChart` showing intensity over time for the selected day.
@@ -128,7 +130,7 @@ Maps a MOER intensity value (lbs CO₂/MWh) to a human-readable marginal fuel la
 - **Cheapest Rate Highlight:** A blue shaded `ReferenceArea` covers the 12am–3pm window, labeled "Cheapest Rate (12am–3pm)", indicating the super off-peak TOU electricity rate period.
 
 #### Day Selector
-- Tabs for each available day in the dataset.
+- Tabs for each available day in the dataset (up to 3 days from the 72-hour forecast).
 - Defaults to today (if data exists for today), otherwise the last available day.
 - Days are derived from data timestamps converted to Pacific Time.
 
@@ -154,7 +156,7 @@ The Monthly Averages view toggle is hidden in the UI but all code is preserved f
 
 ### Footer
 
-Displays: "Built by Henry White" (LinkedIn link with icon) and "Source Code" (GitHub link).
+Displays: "Built by Henry White" (LinkedIn link) and "Source Code" (GitHub link).
 
 ### Time Zone Handling
 

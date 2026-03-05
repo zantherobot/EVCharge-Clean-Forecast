@@ -5,6 +5,7 @@ import {
   combineAndFilterData,
   averageByPTHour,
   findBestWindow,
+  detectIntervalMinutes,
   getCurrentIntensity,
   isGoodTimeToCharge,
   type EmissionDataPoint,
@@ -244,5 +245,95 @@ describe('getEstimatedFuel (additional edge cases)', () => {
 
   it('handles very small negative values', () => {
     expect(getEstimatedFuel(-Number.MAX_SAFE_INTEGER)).toBe('Solar/Wind');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// detectIntervalMinutes
+// ---------------------------------------------------------------------------
+describe('detectIntervalMinutes', () => {
+  it('detects 5-minute intervals', () => {
+    const data: EmissionDataPoint[] = [
+      { timestamp: '2024-06-15T12:00:00Z', intensity: 100, marginalFuel: 'Solar/Wind' },
+      { timestamp: '2024-06-15T12:05:00Z', intensity: 200, marginalFuel: 'Hydro/Mix' },
+    ];
+    expect(detectIntervalMinutes(data)).toBe(5);
+  });
+
+  it('detects 60-minute intervals', () => {
+    const data: EmissionDataPoint[] = [
+      { timestamp: '2024-06-15T12:00:00Z', intensity: 100, marginalFuel: 'Solar/Wind' },
+      { timestamp: '2024-06-15T13:00:00Z', intensity: 200, marginalFuel: 'Hydro/Mix' },
+    ];
+    expect(detectIntervalMinutes(data)).toBe(60);
+  });
+
+  it('returns 60 for single data point', () => {
+    const data: EmissionDataPoint[] = [
+      { timestamp: '2024-06-15T12:00:00Z', intensity: 100, marginalFuel: 'Solar/Wind' },
+    ];
+    expect(detectIntervalMinutes(data)).toBe(60);
+  });
+
+  it('returns 60 for empty data', () => {
+    expect(detectIntervalMinutes([])).toBe(60);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// findBestWindow with 5-minute interval data
+// ---------------------------------------------------------------------------
+describe('findBestWindow (5-minute intervals)', () => {
+  const now = new Date('2024-06-15T12:00:00Z');
+
+  function make5MinData(intensities: number[], startMinute = 0): EmissionDataPoint[] {
+    return intensities.map((intensity, i) => {
+      const minutes = startMinute + i * 5;
+      const hour = 13 + Math.floor(minutes / 60);
+      const min = minutes % 60;
+      return {
+        timestamp: `2024-06-15T${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}:00Z`,
+        intensity,
+        marginalFuel: getEstimatedFuel(intensity),
+      };
+    });
+  }
+
+  it('correctly calculates 1-hour window from 5-min data (12 points)', () => {
+    // 24 data points at 5-min intervals = 2 hours of data
+    // First 12 points (hour 1): alternating 100/300 → avg 200
+    // Last 12 points (hour 2): all 50 → avg 50
+    const data = make5MinData([
+      ...Array(12).fill(0).map((_, i) => i % 2 === 0 ? 100 : 300),
+      ...Array(12).fill(50),
+    ]);
+    const result = findBestWindow(data, 1, now); // 1 hour = 12 data points
+    expect(result).not.toBeNull();
+    // Best 1-hour window should be the second hour (all 50s)
+    expect(result!.avgIntensity).toBe(50);
+    expect(result!.start.timestamp).toBe('2024-06-15T14:00:00Z');
+  });
+
+  it('correctly calculates 2-hour window from 5-min data (24 points)', () => {
+    // 36 data points at 5-min intervals = 3 hours
+    // Hour 1 (points 0-11): all 500
+    // Hour 2 (points 12-23): all 100
+    // Hour 3 (points 24-35): all 200
+    const data = make5MinData([
+      ...Array(12).fill(500),
+      ...Array(12).fill(100),
+      ...Array(12).fill(200),
+    ]);
+    const result = findBestWindow(data, 2, now); // 2 hours = 24 points
+    expect(result).not.toBeNull();
+    // Best 2-hour window: hour 2 + hour 3 = avg 150
+    expect(result!.avgIntensity).toBe(150);
+    expect(result!.start.timestamp).toBe('2024-06-15T14:00:00Z');
+  });
+
+  it('returns null when insufficient 5-min data for requested hours', () => {
+    // 6 data points = 30 minutes, requesting 1 hour
+    const data = make5MinData([100, 200, 300, 100, 200, 300]);
+    expect(findBestWindow(data, 1, now)).toBeNull();
   });
 });
