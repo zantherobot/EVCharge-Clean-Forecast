@@ -119,7 +119,3 @@ work on staging branch
      main  ──► auto-deploys to Railway production env
 ```
 
-### Branch protection
-
-`main` has GitHub branch protection enabled: direct pushes are blocked,
-all changes must arrive via PR (no approvals required for solo use).
