@@ -1,27 +1,29 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Leaf, 
-  Zap, 
-  Clock, 
-  Calendar, 
-  Info, 
-  Car, 
+import {
+  Leaf,
+  Zap,
+  Clock,
+  Calendar,
+  Info,
+  Car,
   ChevronRight,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Linkedin
 } from 'lucide-react';
 import { format, addHours, isSameDay, parseISO, startOfHour } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
-  ReferenceLine
+  ReferenceLine,
+  ReferenceArea
 } from 'recharts';
 
 function cn(...inputs: ClassValue[]) {
@@ -158,6 +160,18 @@ export default function App() {
   }, [data]);
   const isGoodTimeToCharge = bestWindow ? currentIntensity <= bestWindow.avgIntensity * 1.1 : true;
 
+  // Find timestamps in the 12am–3pm cheapest electricity rate window for the selected day
+  const cheapRateRange = useMemo(() => {
+    if (!selectedDay) return null;
+    const inRange = filteredData.filter(d => {
+      const ptDate = toPT(d.timestamp);
+      const hour = ptDate.getHours();
+      return hour >= 0 && hour < 15; // 12am (0) to 2:59pm (14)
+    });
+    if (inRange.length < 2) return null;
+    return { start: inRange[0].timestamp, end: inRange[inRange.length - 1].timestamp };
+  }, [filteredData, selectedDay]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center font-sans">
@@ -215,7 +229,7 @@ export default function App() {
               <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white fill-white" />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">EcoCharge CAISO</h1>
+              <h1 className="text-2xl font-bold tracking-tight">EV Charging Clean Forecast</h1>
               <span className={cn(
                 "ml-2 px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-widest",
                 dataSource === 'watttime' ? "bg-emerald-100 text-emerald-700" : "bg-zinc-200 text-zinc-600"
@@ -227,6 +241,7 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Monthly Averages toggle hidden for now — kept in code for future use
             <div className="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm border border-zinc-200">
               <button
                 onClick={() => setViewMode('forecast')}
@@ -247,7 +262,8 @@ export default function App() {
                 Monthly Averages
               </button>
             </div>
-            
+            */}
+
             {viewMode === 'forecast' && (
               <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-zinc-200">
                 {[2, 4, 8, 12].map((h) => (
@@ -348,11 +364,11 @@ export default function App() {
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Methodology</span>
                   </div>
                   <p className="text-sm text-zinc-400 leading-relaxed mb-4">
-                    Marginal emissions identify which power plant would turn on or off in response to a change in demand. This is the correct metric for deciding <strong>when</strong> to use energy.
+                    This dashboard uses <strong>marginal carbon emissions</strong> data from the <a href="https://watttime.org/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">WattTime API</a>. Marginal emissions identify which power plant would turn on or off in response to a change in demand — the correct metric for deciding <strong>when</strong> to use energy.
                   </p>
-                  <a 
-                    href="https://www.watttime.org/how-it-works/marginal-emissions-methodology/" 
-                    target="_blank" 
+                  <a
+                    href="https://watttime.org/data-science/methodology-validation/"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
                   >
@@ -450,6 +466,18 @@ export default function App() {
                         fillOpacity={1} 
                         fill="url(#colorIntensity)" 
                       />
+                      {cheapRateRange && (
+                        <ReferenceArea
+                          x1={cheapRateRange.start}
+                          x2={cheapRateRange.end}
+                          fill="#3b82f6"
+                          fillOpacity={0.06}
+                          stroke="#3b82f6"
+                          strokeOpacity={0.2}
+                          strokeDasharray="3 3"
+                          label={{ value: 'Cheapest Rate (12am–3pm)', position: 'insideTopLeft', fill: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}
+                        />
+                      )}
                       {bestWindow && isSameDay(parseISO(bestWindow.start.timestamp), parseISO(selectedDay || '')) && (
                         <ReferenceLine 
                           x={bestWindow.start.timestamp} 
@@ -463,40 +491,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Hourly Breakdown */}
-              <div className="bg-white rounded-3xl shadow-sm border border-zinc-200 overflow-hidden">
-                <div className="p-6 border-b border-zinc-100">
-                  <h3 className="text-lg font-bold">Hourly Breakdown</h3>
-                  <p className="text-sm text-zinc-500">Detailed marginal fuel mix for {selectedDay ? format(toPT(selectedDay), 'MMMM d') : 'selected day'}</p>
-                </div>
-                <div className="divide-y divide-zinc-50">
-                  {filteredData.slice(0, 12).map((hour) => (
-                    <div key={hour.timestamp} className="flex items-center justify-between p-4 hover:bg-zinc-50 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-zinc-400 w-12">
-                          {format(toPT(hour.timestamp), 'h a')}
-                        </span>
-                        <div className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider",
-                          hour.marginalFuel === 'Solar' ? "bg-amber-100 text-amber-700" :
-                          hour.marginalFuel === 'Wind' ? "bg-blue-100 text-blue-700" :
-                          hour.marginalFuel === 'Natural Gas' ? "bg-zinc-100 text-zinc-700" :
-                          "bg-emerald-100 text-emerald-700"
-                        )}>
-                          {hour.marginalFuel}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-sm font-bold">{Math.round(hour.intensity)}</div>
-                          <div className="text-[10px] text-zinc-400 uppercase font-bold">lbs/MWh</div>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-zinc-300" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         ) : (
@@ -612,6 +606,31 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Footer */}
+        <footer className="pt-6 pb-2 text-center text-sm text-zinc-400">
+          <div className="flex items-center justify-center gap-2">
+            <span>Built by</span>
+            <a
+              href="https://www.linkedin.com/in/henry-a-white/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors font-medium"
+            >
+              <Linkedin className="w-4 h-4" />
+              Henry White
+            </a>
+            <span>&middot;</span>
+            <a
+              href="https://github.com/zantherobot/EVCharge-Clean-Forecast"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-500 hover:text-zinc-700 transition-colors font-medium"
+            >
+              Source Code
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   );

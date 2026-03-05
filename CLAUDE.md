@@ -5,8 +5,8 @@ This file tells Claude how to work on this repository. For what the product does
 ## Project Structure
 
 ```
-server.ts         # Express backend — API routes (CAISO, WattTime, Gemini), Vite dev middleware
-src/App.tsx       # Main React component (dashboard UI, charts, AI chat)
+server.ts         # Express backend — API routes (WattTime auth, emissions, monthly averages), Vite dev middleware
+src/App.tsx       # Main React component (dashboard UI, charts)
 src/shared.ts     # Shared pure functions (fuel estimation, window calculation, data processing)
 src/main.tsx      # React entry point
 src/index.css     # Tailwind CSS entry
@@ -15,7 +15,7 @@ vite.config.ts    # Vite + React + Tailwind config (includes vitest config)
 tsconfig.json     # TypeScript config
 tests/            # Vitest test suite
 SPEC.md           # Product specification
-.env.example      # Required env vars (GEMINI_API_KEY, WATTTIME credentials, APP_URL)
+.env.example      # Required env vars (WattTime credentials)
 ```
 
 ## Running the App Locally
@@ -75,7 +75,7 @@ These apply to every change.
 
 ### Graceful Error Handling
 
-- API failures (e.g. WattTime down, Gemini quota exceeded, bad CAISO response) must display a helpful message to the user and log the error server-side.
+- API failures (e.g. WattTime down, bad CAISO response) must display a helpful message to the user and log the error server-side.
 - The app should never show a raw error page to end users.
 
 ## Deployment & Branch Workflow

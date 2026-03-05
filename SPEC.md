@@ -1,6 +1,6 @@
-# SPEC.md — EcoCharge CAISO Product Specification
+# SPEC.md — EV Charging Clean Forecast Product Specification
 
-EcoCharge CAISO is a web dashboard that helps EV owners in California charge their vehicles when the electrical grid is cleanest. It uses real-time and forecasted marginal carbon emissions data from the WattTime API (CAISO_NORTH region) to recommend optimal charging windows.
+EV Charging Clean Forecast is a web dashboard that helps EV owners in California charge their vehicles when the electrical grid is cleanest. It uses real-time and forecasted **marginal carbon emissions** data from the [WattTime API](https://watttime.org/) (CAISO_NORTH region) to recommend optimal charging windows.
 
 ## Architecture
 
@@ -59,6 +59,8 @@ Returns combined historical + forecast marginal emissions data for CAISO_NORTH.
 
 Returns typical hourly emissions profiles for each month, based on a representative mid-month day from 2024 WattTime historical data.
 
+> **Note:** This endpoint is still active but the Monthly Averages view is currently hidden in the frontend. The code is preserved for future use.
+
 **Response shape:**
 ```json
 [
@@ -96,14 +98,7 @@ Maps a MOER intensity value (lbs CO₂/MWh) to a human-readable marginal fuel la
 
 ## Frontend
 
-### View Modes
-
-The app has two view modes, toggled via header buttons:
-
-1. **Forecast** (default) — Real-time emissions data with charging recommendations.
-2. **Monthly Averages** — Historical typical daily emissions profile by month.
-
-### Forecast View
+### Forecast View (Default — Only Active View)
 
 #### Status Card
 - Displays current grid intensity (lbs/MWh) from the most recent past data point.
@@ -130,45 +125,36 @@ The app has two view modes, toggled via header buttons:
 - Green area fill with gradient.
 - Tooltip shows: time (PT), intensity, and marginal fuel type.
 - If the optimal window starts on the selected day, a dashed reference line marks the best start time.
+- **Cheapest Rate Highlight:** A blue shaded `ReferenceArea` covers the 12am–3pm window, labeled "Cheapest Rate (12am–3pm)", indicating the super off-peak TOU electricity rate period.
 
 #### Day Selector
 - Tabs for each available day in the dataset.
 - Defaults to today (if data exists for today), otherwise the last available day.
 - Days are derived from data timestamps converted to Pacific Time.
 
-#### Hourly Breakdown
-- Table showing the first 12 hourly data points for the selected day.
-- Each row displays: time (PT), fuel type badge (color-coded), and intensity value.
-- Fuel badge colors: Solar → amber, Wind → blue, Natural Gas → zinc, other → emerald.
+#### Methodology Card
+- Dark card explaining that the dashboard uses marginal carbon emissions from the WattTime API.
+- Links to [WattTime](https://watttime.org/) and their [methodology validation page](https://watttime.org/data-science/methodology-validation/).
 
-### Monthly Averages View
+### Monthly Averages View (Hidden — Code Preserved)
 
-#### Month Selector
-- 12 buttons (Jan–Dec), defaults to current month.
-- Clicking a month loads that month's hourly profile chart.
+The Monthly Averages view toggle is hidden in the UI but all code is preserved for future re-enablement. It includes:
 
-#### Monthly Profile Chart
-- Recharts `AreaChart` showing typical 24-hour emissions pattern.
-- X-axis: hour of day (12am–11pm).
-- Y-axis: lbs CO₂/MWh.
-- Tooltip shows hour and intensity.
-
-#### Seasonal Insight
-- Text block with season-specific commentary:
-  - **Spring (Mar–May):** Solar production dominance, near-zero mid-day emissions.
-  - **Summer (Jun–Sep):** AC-driven peaks, steep evening ramp.
-  - **Fall/Winter (Oct–Feb):** Higher morning/evening peaks, shorter solar hours.
-
-#### Month Stats
-- **Daily Avg:** Average intensity across all 24 hours.
-- **Best Hour:** The hour with the lowest average intensity.
+- Month selector (Jan–Dec buttons)
+- 24-hour emissions profile chart per month
+- Seasonal insight text
+- Month stats (daily average, best hour)
 
 ### App States
 
 1. **Loading** — Spinner with "Analyzing grid patterns..." text.
 2. **Error** — Red alert card with error message and "Try Again" button that re-fetches.
 3. **Empty Data** — Info card with "No data available" message and "Refresh" button.
-4. **Normal** — Full dashboard with forecast or monthly view.
+4. **Normal** — Full dashboard with forecast view.
+
+### Footer
+
+Displays: "Built by Henry White" (LinkedIn link with icon) and "Source Code" (GitHub link).
 
 ### Time Zone Handling
 
@@ -186,9 +172,7 @@ Header shows a badge indicating data source:
 
 | Variable            | Required | Description                          |
 |---------------------|----------|--------------------------------------|
-| `GEMINI_API_KEY`    | Yes      | Google Gemini AI API key             |
 | `WATTTIME_USER`     | Yes      | WattTime API username                |
 | `WATTTIME_PASSWORD` | Yes      | WattTime API password                |
-| `APP_URL`           | No       | App's public URL (for self-referential links) |
 | `PORT`              | No       | Server port (default: 3000)          |
 | `NODE_ENV`          | No       | `"production"` for static serving    |
