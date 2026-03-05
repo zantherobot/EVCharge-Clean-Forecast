@@ -450,7 +450,7 @@ export default function App() {
                           stroke="#3b82f6"
                           strokeOpacity={0.3}
                           strokeDasharray="3 3"
-                          label={{ value: 'Cheapest Rate (12am–3pm)', position: 'insideTopRight', fill: '#3b82f6', fontSize: 9, fontWeight: 'bold' }}
+                          label={{ value: 'Cheapest Rate (12am–3pm)', position: 'insideTop', fill: '#3b82f6', fontSize: 9, fontWeight: 'bold', offset: 15 }}
                         />
                       )}
                       {bestWindow && isSameDay(parseISO(bestWindow.start.timestamp), parseISO(selectedDay || '')) && (
