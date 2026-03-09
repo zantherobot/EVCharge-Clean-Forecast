@@ -331,29 +331,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Methodology Card */}
-              <div className="bg-zinc-900 text-white p-6 rounded-3xl shadow-sm overflow-hidden relative">
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Info className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Methodology</span>
-                  </div>
-                  <p className="text-sm text-zinc-400 leading-relaxed mb-4">
-                    This dashboard uses <strong>marginal carbon emissions</strong> data from the <a href="https://watttime.org/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">WattTime API</a>. Marginal emissions identify which power plant would turn on or off in response to a change in demand — the correct metric for deciding <strong>when</strong> to use energy.
-                  </p>
-                  <a
-                    href="https://watttime.org/data-science/methodology-validation/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
-                  >
-                    Learn More <ChevronRight className="w-3 h-3" />
-                  </a>
-                </div>
-                <div className="absolute -bottom-6 -right-6 opacity-10">
-                  <Leaf className="w-32 h-32" />
-                </div>
-              </div>
             </div>
 
             {/* Right Column: Chart & Forecast */}
@@ -373,8 +350,8 @@ export default function App() {
                         onClick={() => setSelectedDay(day)}
                         className={cn(
                           "px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all",
-                          selectedDay === day 
-                            ? "bg-zinc-100 text-zinc-900" 
+                          selectedDay === day
+                            ? "bg-zinc-100 text-zinc-900"
                             : "text-zinc-400 hover:text-zinc-600"
                         )}
                       >
@@ -394,8 +371,8 @@ export default function App() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="timestamp" 
+                      <XAxis
+                        dataKey="timestamp"
                         tickFormatter={(str) => {
                           const ptDate = new Date(new Date(str).toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }));
                           return format(ptDate, 'h a');
@@ -405,13 +382,13 @@ export default function App() {
                         tick={{ fontSize: 10, fill: '#a1a1aa' }}
                         minTickGap={30}
                       />
-                      <YAxis 
+                      <YAxis
                         axisLine={false}
                         tickLine={false}
                         tick={{ fontSize: 10, fill: '#a1a1aa' }}
                         label={{ value: 'lbs CO2/MWh', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: '#a1a1aa' } }}
                       />
-                      <Tooltip 
+                      <Tooltip
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const d = payload[0].payload as EmissionData;
@@ -433,13 +410,13 @@ export default function App() {
                           return null;
                         }}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="intensity" 
-                        stroke="#10b981" 
+                      <Area
+                        type="monotone"
+                        dataKey="intensity"
+                        stroke="#10b981"
                         strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorIntensity)" 
+                        fillOpacity={1}
+                        fill="url(#colorIntensity)"
                       />
                       {cheapRateRange && (
                         <ReferenceArea
@@ -454,9 +431,9 @@ export default function App() {
                         />
                       )}
                       {bestWindow && isSameDay(parseISO(bestWindow.start.timestamp), parseISO(selectedDay || '')) && (
-                        <ReferenceLine 
-                          x={bestWindow.start.timestamp} 
-                          stroke="#10b981" 
+                        <ReferenceLine
+                          x={bestWindow.start.timestamp}
+                          stroke="#10b981"
                           strokeDasharray="3 3"
                           label={{ position: 'top', value: 'Best Start', fill: '#10b981', fontSize: 10, fontWeight: 'bold' }}
                         />
@@ -466,6 +443,30 @@ export default function App() {
                 </div>
               </div>
 
+            </div>
+
+            {/* Methodology Card — 3rd grid child: auto-placed to col 1 row 2 on desktop, after chart on mobile */}
+            <div className="lg:col-start-1 bg-zinc-900 text-white p-6 rounded-3xl shadow-sm overflow-hidden relative">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Methodology</span>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed mb-4">
+                  This dashboard uses <strong>marginal carbon emissions</strong> data from the <a href="https://watttime.org/" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300 underline">WattTime API</a>. Marginal emissions identify which power plant would turn on or off in response to a change in demand — the correct metric for deciding <strong>when</strong> to use energy.
+                </p>
+                <a
+                  href="https://watttime.org/data-science/methodology-validation/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  Learn More <ChevronRight className="w-3 h-3" />
+                </a>
+              </div>
+              <div className="absolute -bottom-6 -right-6 opacity-10">
+                <Leaf className="w-32 h-32" />
+              </div>
             </div>
           </div>
         ) : (
